@@ -1,165 +1,190 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  TextInput,
-} from 'react-native';
-import { globalStyles, colors, typography, spacing } from '../styles/global';
-import { auth, db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { View, Text, ActivityIndicator } from 'react-native';
 
-const BookingScreen = ({ route, navigation }) => {
-  const { hotel } = route.params;
-  const [checkInDate, setCheckInDate] = useState('');
-  const [checkOutDate, setCheckOutDate] = useState('');
-  const [guests, setGuests] = useState('1');
-  const [rooms, setRooms] = useState('1');
-  const [loading, setLoading] = useState(false);
+// Import mock Firebase instead of real Firebase
+import { auth } from '../mockFirebase';
 
-  const calculateTotal = () => {
-    const nights = 1; // Simplified calculation
-    return nights * hotel.price * parseInt(rooms);
-  };
+// Screens
+import OnboardingScreen from '../screens/OnboardingScreen';
+import SignInScreen from '../screens/auth/SignInScreen';
+import SignUpScreen from '../screens/auth/SignUpScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import HomeScreen from '../screens/HomeScreen';
+import ExploreScreen from '../screens/ExploreScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import HotelDetailsScreen from '../screens/HotelDetailsScreen';
+import BookingScreen from '../screens/BookingScreen';
 
-  const handleConfirmBooking = async () => {
-    if (!checkInDate || !checkOutDate) {
-      Alert.alert('Error', 'Please select check-in and check-out dates');
-      return;
-    }
+const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-    if (parseInt(guests) < 1 || parseInt(rooms) < 1) {
-      Alert.alert('Error', 'Please enter valid number of guests and rooms');
-      return;
-    }
+// Auth Stack
+const AuthStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="SignIn" component={SignInScreen} />
+    <Stack.Screen name="SignUp" component={SignUpScreen} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+  </Stack.Navigator>
+);
 
-    setLoading(true);
-    try {
-      // Save booking to Firebase
-      await addDoc(collection(db, 'bookings'), {
-        userId: auth.currentUser.uid,
-        hotelId: hotel.id,
-        hotelName: hotel.name,
-        checkInDate,
-        checkOutDate,
-        guests: parseInt(guests),
-        rooms: parseInt(rooms),
-        total: calculateTotal(),
-        status: 'confirmed',
-        createdAt: new Date(),
-      });
+// Home Stack
+const HomeStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="HomeMain" component={HomeScreen} />
+    <Stack.Screen name="HotelDetails" component={HotelDetailsScreen} />
+    <Stack.Screen name="Booking" component={BookingScreen} />
+  </Stack.Navigator>
+);
 
-      Alert.alert(
-        'Booking Confirmed!',
-        `Your booking at ${hotel.name} has been confirmed. Total: $${calculateTotal()}`,
-        [{ text: 'OK', onPress: () => navigation.navigate('HomeTab') }]
-      );
-    } catch (error) {
-      Alert.alert('Booking Failed', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+// Explore Stack
+const ExploreStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ExploreMain" component={ExploreScreen} />
+    <Stack.Screen name="HotelDetails" component={HotelDetailsScreen} />
+    <Stack.Screen name="Booking" component={BookingScreen} />
+  </Stack.Navigator>
+);
+
+// Profile Stack
+const ProfileStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+  </Stack.Navigator>
+);
+
+// Main Tabs
+const AppTabs = () => (
+  <Tab.Navigator
+    screenOptions={{
+      headerShown: false,
+      tabBarStyle: {
+        backgroundColor: '#1C1C1E',
+        borderTopColor: '#2C2C2E',
+        paddingBottom: 8,
+        paddingTop: 8,
+        height: 60,
+      },
+      tabBarActiveTintColor: '#34C759',
+      tabBarInactiveTintColor: '#8E8E93',
+      tabBarLabelStyle: {
+        fontSize: 12,
+        fontFamily: 'Helvetica',
+        fontWeight: '500',
+      },
+    }}
+  >
+    <Tab.Screen 
+      name="HomeTab" 
+      component={HomeStack}
+      options={{
+        tabBarLabel: 'Home',
+        tabBarIcon: ({ color, size }) => (
+          <Text style={{ color, fontSize: 20 }}>🏠</Text>
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="ExploreTab" 
+      component={ExploreStack}
+      options={{
+        tabBarLabel: 'Explore',
+        tabBarIcon: ({ color, size }) => (
+          <Text style={{ color, fontSize: 20 }}>🔍</Text>
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="ProfileTab" 
+      component={ProfileStack}
+      options={{
+        tabBarLabel: 'Profile',
+        tabBarIcon: ({ color, size }) => (
+          <Text style={{ color, fontSize: 20 }}>👤</Text>
+        ),
+      }}
+    />
+  </Tab.Navigator>
+);
+
+const AppNavigator = () => {
+  const [user, setUser] = useState(null);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    console.log('🚀 Starting mock app initialization...');
+    
+    // Simple initialization - no AsyncStorage, no persistence
+    const initializeApp = () => {
+      try {
+        // Always show onboarding for first run in mock version
+        setIsOnboardingCompleted(false);
+        
+        // Set up mock auth state listener
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+          console.log('🔐 Mock auth state:', user ? user.email : 'No user');
+          setUser(user);
+          setLoading(false);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('💥 Mock init error:', error);
+        setLoading(false);
+      }
+    };
+
+    const unsubscribe = initializeApp();
+    return unsubscribe;
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: '#000000', 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+      }}>
+        <Text style={{ 
+          color: '#FFFFFF', 
+          fontFamily: 'Helvetica', 
+          fontSize: 24,
+          marginBottom: 20 
+        }}>
+          Hotel Booking
+        </Text>
+        <ActivityIndicator size="large" color="#34C759" />
+        <Text style={{ 
+          color: '#8E8E93', 
+          fontFamily: 'Helvetica', 
+          fontSize: 16,
+          marginTop: 16 
+        }}>
+          Loading Mock App...
+        </Text>
+      </View>
+    );
+  }
+
+  console.log('🎯 Navigation - Onboarding:', isOnboardingCompleted, 'User:', user ? 'YES' : 'NO');
 
   return (
-    <View style={globalStyles.container}>
-      <ScrollView 
-        style={globalStyles.hiddenScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={globalStyles.screen}>
-          {/* Hotel Summary */}
-          <View style={globalStyles.card}>
-            <Text style={[typography.h2, { marginBottom: spacing.md }]}>Booking Summary</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-              <Text style={{ fontSize: 40, marginRight: spacing.md }}>{hotel.image}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={typography.body}>{hotel.name}</Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>{hotel.location}</Text>
-                <Text style={[typography.body, { color: colors.accent, marginTop: spacing.xs }]}>
-                  ${hotel.price}/night
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Booking Details */}
-          <View style={[globalStyles.card, { marginTop: spacing.md }]}>
-            <Text style={[typography.h2, { marginBottom: spacing.md }]}>Booking Details</Text>
-            
-            <Text style={[typography.body, { marginBottom: spacing.xs }]}>Check-in Date</Text>
-            <TextInput
-              style={globalStyles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-              value={checkInDate}
-              onChangeText={setCheckInDate}
-            />
-            
-            <Text style={[typography.body, { marginTop: spacing.md, marginBottom: spacing.xs }]}>Check-out Date</Text>
-            <TextInput
-              style={globalStyles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textSecondary}
-              value={checkOutDate}
-              onChangeText={setCheckOutDate}
-            />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md }}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <Text style={[typography.body, { marginBottom: spacing.xs }]}>Guests</Text>
-                <TextInput
-                  style={globalStyles.input}
-                  placeholder="1"
-                  placeholderTextColor={colors.textSecondary}
-                  value={guests}
-                  onChangeText={setGuests}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                <Text style={[typography.body, { marginBottom: spacing.xs }]}>Rooms</Text>
-                <TextInput
-                  style={globalStyles.input}
-                  placeholder="1"
-                  placeholderTextColor={colors.textSecondary}
-                  value={rooms}
-                  onChangeText={setRooms}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Price Summary */}
-          <View style={[globalStyles.card, { marginTop: spacing.md }]}>
-            <Text style={[typography.h2, { marginBottom: spacing.md }]}>Price Summary</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}>
-              <Text style={typography.body}>${hotel.price} x {rooms} room(s) x 1 night</Text>
-              <Text style={typography.body}>${hotel.price * parseInt(rooms)}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <Text style={[typography.h2, { color: colors.accent }]}>Total</Text>
-              <Text style={[typography.h2, { color: colors.accent }]}>${calculateTotal()}</Text>
-            </View>
-          </View>
-
-          {/* Confirm Button */}
-          <TouchableOpacity
-            style={[globalStyles.button, { marginTop: spacing.lg }]}
-            onPress={handleConfirmBooking}
-            disabled={loading}
-          >
-            <Text style={globalStyles.buttonText}>
-              {loading ? 'Confirming...' : 'Confirm Booking'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isOnboardingCompleted ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        ) : !user ? (
+          <Stack.Screen name="Auth" component={AuthStack} />
+        ) : (
+          <Stack.Screen name="App" component={AppTabs} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 
-export default BookingScreen;
+export default AppNavigator;

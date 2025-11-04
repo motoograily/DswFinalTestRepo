@@ -8,8 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth } from '../../mockFirebase'; // Import mock instead of real Firebase
 import { globalStyles, colors, typography, spacing } from '../../styles/global';
 
 const SignInScreen = ({ navigation }) => {
@@ -25,10 +24,13 @@ const SignInScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Use mock Firebase
+      await auth.signInWithEmailAndPassword(email, password);
+      console.log('✅ Mock sign in successful');
       // Navigation handled by auth state listener
     } catch (error) {
-      Alert.alert('Sign In Failed', error.message);
+      console.error('Mock sign in error:', error);
+      Alert.alert('Sign In Failed', 'Invalid email or password');
     } finally {
       setLoading(false);
     }

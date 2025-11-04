@@ -1,9 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from 'firebase/auth';
 
-// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCND4NKjR6cXV5kHF0xO5YTeAN9quA7gy0",
   authDomain: "hotel-bookings-11ff4.firebaseapp.com",
@@ -16,12 +14,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication with persistent storage
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+// Initialize services WITHOUT persistence setup
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Initialize Cloud Firestore
-export const db = getFirestore(app);
-
+export { auth, db };
 export default app;

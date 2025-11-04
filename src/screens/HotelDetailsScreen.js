@@ -12,7 +12,16 @@ import { globalStyles, colors, typography, spacing } from '../styles/global';
 import { auth } from '../firebase';
 
 const HotelDetailsScreen = ({ route, navigation }) => {
-  const { hotel } = route.params;
+  // Safely get hotel from route params
+  const hotel = route?.params?.hotel || {
+    id: 1,
+    name: 'Unknown Hotel',
+    location: 'Unknown Location',
+    price: 0,
+    rating: 0,
+    image: '🏨'
+  };
+
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(5);
@@ -34,20 +43,32 @@ const HotelDetailsScreen = ({ route, navigation }) => {
     },
   ];
 
-  const handleBookNow = () => {
-    if (!auth.currentUser) {
-      Alert.alert(
-        'Sign In Required',
-        'Please sign in to book a hotel.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => navigation.navigate('Auth') }
-        ]
-      );
-      return;
+  // In the handleBookNow function, update the navigation call:
+const handleBookNow = () => {
+  if (!auth.currentUser) {
+    Alert.alert(
+      'Sign In Required',
+      'Please sign in to book a hotel.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => navigation.navigate('Auth') }
+      ]
+    );
+    return;
+  }
+  
+  // Navigate to Booking screen with hotel parameter
+  navigation.navigate('Booking', { 
+    hotel: {
+      id: hotel.id,
+      name: hotel.name,
+      location: hotel.location,
+      price: hotel.price,
+      rating: hotel.rating,
+      image: hotel.image
     }
-    navigation.navigate('Booking', { hotel });
-  };
+  });
+};
 
   const handleAddReview = () => {
     if (!auth.currentUser) {

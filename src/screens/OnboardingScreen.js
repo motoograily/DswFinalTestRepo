@@ -6,7 +6,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { globalStyles, colors, typography, spacing } from '../styles/global';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,15 +31,10 @@ const OnboardingScreen = ({ navigation }) => {
     },
   ];
 
-  const handleGetStarted = async () => {
-    try {
-      // Store as string 'true' instead of boolean
-      await AsyncStorage.setItem('@onboarding_completed', 'true');
-      navigation.replace('Auth');
-    } catch (error) {
-      console.error('Error saving onboarding status:', error);
-      navigation.replace('Auth');
-    }
+  const handleGetStarted = () => {
+    console.log('🎯 Get Started pressed - navigating to Auth');
+    // No storage - just navigate
+    navigation.replace('Auth');
   };
 
   return (

@@ -12,6 +12,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { globalStyles, colors, typography, spacing } from '../../styles/global';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -33,16 +34,34 @@ const SignUpScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
       
       // Create user profile in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      await setDoc(doc(db, 'users', user.uid), {
         name,
         email,
         createdAt: new Date(),
       });
       
+      // MANUAL PERSISTENCE: Store user data ourselves
+      await AsyncStorage.setItem('@user_email', email);
+      await AsyncStorage.setItem('@user_token', user.accessToken);
+      
+      console.log('✅ User created and stored manually');
+      
     } catch (error) {
-      Alert.alert('Sign Up Failed', error.message);
+      console.error('Sign up error:', error);
+      let errorMessage = 'Sign up failed. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak.';
+      }
+      
+      Alert.alert('Sign Up Failed', errorMessage);
     } finally {
       setLoading(false);
     }
